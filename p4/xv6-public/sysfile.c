@@ -442,3 +442,35 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+
+/*
+ * EDIT: functionality of system call wmap goes here
+ * Iteratively make calls to physical memory (per page) to obtain addresses to add to the page table of a specific process
+ * implementation is considered "lazy". 16 max mem allocs.
+ *
+ * inputs:
+ *	uint addr		virtual address
+ *	int length		length of mapping in bytes
+ *	int flags		mm flags
+ *	int fd			file descriptor 
+ *
+ * flags:
+ *	MAP_ANONYMOUS	not file-backed mapping, ignore fd
+ *	MAP_SHARED		mapping is shared, copy addresses from parent to child
+ *	MAP_PRIVATE		mapping is not shared, copy addresses from parent to child, but map the addresses to new physical addresses
+ *	MAP_FIXED		if set, input addr must be the exact virtual address, else find a page in virtual mem from x60000000 and x80000000
+ *
+ * outputs:
+ *	return
+ *  
+ */
+int
+sys_wmap(void)
+{
+	// input variable declaration
+
+	// obtain inputs
+
+	// 
+}
