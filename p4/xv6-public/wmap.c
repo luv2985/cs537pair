@@ -2,9 +2,17 @@
 
 #include "types.h"
 #include "defs.h"
-#include "wmap.h"
+#include "param.h"
 #include "mmu.h"
 #include "proc.h"
+#include "fs.h"
+#include "spinlock.h"
+#include "sleeplock.h"
+#include "file.h"
+#include "fcntl.h"
+#include "defs.h"
+#include "memlayout.h"
+#include "wmap.h"
 
 #define USERBOUNDARY 0x60000000
 #define KERNBASE 0x80000000
@@ -24,9 +32,10 @@ int check_valid(uint addr) {
 
 int find_nu_addr(uint va) {
     char* mem = kalloc();
-    mappages(myproc()->pgdir, va, PGSIZE, V2P(mem), PTE_W | PTE_U);
+    mappages(myproc()->pgdir, (void*) va, PGSIZE, V2P(mem), PTE_W | PTE_U);
     return 0;
 }
+
 
 /*
  * EDIT: functionality of system call wmap goes here
@@ -48,33 +57,42 @@ int find_nu_addr(uint va) {
  * outputs:
  *  return
  *  
- */
+*/
 uint sys_wmap(uint addr, int length, int flags, int fd) {
-    if(length <= 0) {
-        printf("u dumb\n");
+    
+	/* CHECK FLAGS */
+
+	// check length
+	if(length <= 0) {
+        //printf("u dumb\n");
         return FAILED;
     }
 
 	// check flags
     if ((flags & MAP_SHARED) && (flags & MAP_PRIVATE)) {
-        printf("flags collide\n");
+        //printf("flags collide\n");
         return FAILED;
     }
 
     // get process
-    struct proc *curproc = myproc();
+    //struct proc *curproc = myproc();
     uint va;
 
+	// MAP_FIXED flag
     if (flags & MAP_FIXED) {
         if (addr < USERBOUNDARY || addr >= KERNBASE || addr % PGSIZE != 0) {
-            printf("addr f\n");
+            //printf("addr f\n");
             return FAILED;
         }
-        // Check if the specified address range is available
+        // Check if the specified address range is available x60000000
         if(check_valid(addr)<0) {
-            printf("fixed addr f\n");
+            //printf("fixed addr f\n");
             return FAILED;
         }
+
+		va = addr;
+
+		/*
         // valid, do lazy alloc
         if (find_nu_addr(addr) != 0) {
             printf("lazy alloc f\n");
@@ -82,8 +100,9 @@ uint sys_wmap(uint addr, int length, int flags, int fd) {
         }
         // TODO: update pg t
 
-        return addr;
-    } else { // not fixed
+        return addr;*/
+    } else {
+		/*
         int iter = length/PGSIZE;
         int num_pages = 0; // keep record of number of pages created cuz max is 16
         // loop thru pg t to get available space
@@ -110,22 +129,37 @@ uint sys_wmap(uint addr, int length, int flags, int fd) {
         if(num_pages > 16) {
             printf("too many pages\n");
             return FAILED;
-        }
+        } */
+		return FAILED;
+	}
+    
 
-        if(flags & MAP_ANONYMOUS) {
+	if(flags & MAP_ANONYMOUS) {
             // we don't do anything?
-        } else if (flags & MAP_SHARED) {
+    } else if (flags & MAP_SHARED) {
             // TODO: Implement shared mapping logic
             // Copy mappings from parent to child
 
-        } else if (flags & MAP_PRIVATE) {
+    } else if (flags & MAP_PRIVATE) {
             // TODO: Implement private mapping logic
             // Copy mappings from parent to child, use different physical pages
-            
-        }
     }
-    // wat do we return?
-    return 0;
+    
+	/* LAZY ALLOCATION */
+	uint nva = va;	
+	int leftover = length;
+	while (leftover > 0) {
+		// allocate new pages
+		find_nu_addr(va);
+
+		// advance iter
+		nva += PGSIZE;
+		leftover = leftover - PGSIZE;
+	}
+
+	// TODO: update process size: myproc()->sz += length or something
+
+    return SUCCESS;
 }
 
 /*
