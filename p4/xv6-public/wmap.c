@@ -15,16 +15,17 @@ int check_valid(uint addr) {
 
     if (pte != 0 && (*pte & PTE_P) != 0) {
         // The page is present and valid
-        return 0;
+        return SUCCESS;
     } else {
         // The page is not present or not valid
-        return -1;
+        return FAILED;
     }
 }
 
-int find_nu_addr() {
+int find_nu_addr(uint va) {
     char* mem = kalloc();
-    mappages(myproc()->pgdir, USERBOUNDARY, 4096, V2P(mem), PTE_W | PTE_U);
+    mappages(myproc()->pgdir, va, PGSIZE, V2P(mem), PTE_W | PTE_U);
+    return 0;
 }
 
 /*
@@ -49,43 +50,82 @@ int find_nu_addr() {
  *  
  */
 uint sys_wmap(uint addr, int length, int flags, int fd) {
-    // get process
-    struct proc *curproc = myproc();
-    uint va;
-
     if(length <= 0) {
         printf("u dumb\n");
-        return -1;
+        return FAILED;
     }
 
 	// check flags
     if ((flags & MAP_SHARED) && (flags & MAP_PRIVATE)) {
         printf("flags collide\n");
-        return -1;
+        return FAILED;
     }
+
+    // get process
+    struct proc *curproc = myproc();
+    uint va;
 
     if (flags & MAP_FIXED) {
         if (addr < USERBOUNDARY || addr >= KERNBASE || addr % PGSIZE != 0) {
             printf("addr f\n");
-            return -1;
+            return FAILED;
         }
         // Check if the specified address range is available
         if(check_valid(addr)<0) {
             printf("fixed addr f\n");
-            return -1;
+            return FAILED;
         }
-    } else {
-        printf("not map fix\n");
-        return -1;
-    }
+        // valid, do lazy alloc
+        if (find_nu_addr(addr) != 0) {
+            printf("lazy alloc f\n");
+            return FAILED;
+        }
+        // TODO: update pg t
 
-    int iter = length/PGSIZE;
-	// track allocated physical addresses: loop through and keep getting physical address, add to page table
-	for(int i=0; i<iter; i++) {
-        find_nu_addr(va);
-        va += PGSIZE;
+        return addr;
+    } else { // not fixed
+        int iter = length/PGSIZE;
+        int num_pages = 0; // keep record of number of pages created cuz max is 16
+        // loop thru pg t to get available space
+        for(int i=0; i<iter; i++) {
+            va = USERBOUNDARY + i * PGSIZE;
+            // if success, return 0, so loop stops; otherwise keep looping
+            while(check_valid(va)) {
+                va += PGSIZE;
+                if(va >= KERNBASE) {
+                    printf("va > kern\n");
+                    return FAILED;
+                }
+            }            
+        }
+        // yay it worked now do lazy alloc
+        if (find_nu_addr(addr) != 0) {
+            printf("lazy alloc f\n");
+            return FAILED;
+        }
+        // TODO: update pg t
+
+        num_pages++;
+        // check if surpass 16 pages
+        if(num_pages > 16) {
+            printf("too many pages\n");
+            return FAILED;
+        }
+
+        if(flags & MAP_ANONYMOUS) {
+            // we don't do anything?
+        } else if (flags & MAP_SHARED) {
+            // TODO: Implement shared mapping logic
+            // Copy mappings from parent to child
+
+        } else if (flags & MAP_PRIVATE) {
+            // TODO: Implement private mapping logic
+            // Copy mappings from parent to child, use different physical pages
+            
+        }
     }
-    
+    // wat do we return?
+    return 0;
 }
 
 /*
