@@ -23,7 +23,6 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-uint wmap(uint, int, int, int); // Vincent's edit: uint doesnt seen to be a thing? is this right?
 
 // ulib.c
 int stat(const char*, struct stat*);

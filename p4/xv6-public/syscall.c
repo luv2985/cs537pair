@@ -103,8 +103,9 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
-extern int sys_wmap(void); // Vincent's edit: define system call handler which is an external function to be called
-
+extern int sys_wmap(void); // edited: define system call handler which is an external function to be called
+extern int sys_wunmap(void); // edited
+extern int sys_getwmapinfo(void); // edited
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -128,7 +129,9 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-[SYS_wmap]	  sys_wmap, // Vincent's edit: define function pointer
+[SYS_wmap]	  sys_wmap, // edited: define function pointer
+[SYS_wunmap]		sys_wunmap, // edited
+[SYS_getwmapinfo]	sys_getwmapinfo, // edited
 };
 
 void

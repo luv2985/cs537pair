@@ -29,4 +29,3 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
-SYSCALL(wmap) // Vincent's edit: added wmap to bridge user 2 kernel
