@@ -86,6 +86,10 @@ allocproc(void)
   return 0;
 
 found:
+  // Initialize the wmaps field for the new process
+  p->wmaps.total_mmaps = 0;
+  p->wmaps.head = 0;
+
   p->state = EMBRYO;
   p->pid = nextpid++;
 
@@ -142,8 +146,8 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
-	// Edited: init wmap struct tracker
-	p->wmaps.total_mmaps = 0;
+	// Edited: init wmap struct tracker; removed cuz init in allocproc
+	// p->wmaps.total_mmaps = 0;
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above

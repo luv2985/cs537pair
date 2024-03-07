@@ -1,5 +1,6 @@
 // wmap.c
 
+#include "stdio.h"
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -10,7 +11,6 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
-#include "defs.h"
 #include "memlayout.h"
 #include "wmap.h"
 
@@ -69,8 +69,8 @@ int sys_getwmapinfo(struct wmapinfo *wminfo)
 	struct proc *curproc = myproc();
     
     // i guess we need it?
-    if (argptr(0, (char *)&wminfo, sizeof(struct wmapinfo)) < 0) {
-        printf("get wmap info arg 0\n");
+    if (argptr(0, (char **)&wminfo, sizeof(struct wmapinfo)) < 0) {
+        // printf("get wmap info arg 0\n");
         return FAILED;
     }
 
@@ -100,8 +100,8 @@ int sys_getwmapinfo(struct wmapinfo *wminfo)
 int getpgdirinfo(struct pgdirinfo *pdinfo) {
         struct proc *curproc = myproc();
 
-    if (argptr(0, (char *)&pdinfo, sizeof(struct pgdirinfo)) < 0) {
-        printf("get pgdir info arg 0\n");
+    if (argptr(0, (char **)&pdinfo, sizeof(struct pgdirinfo)) < 0) {
+        // printf("get pgdir info arg 0\n");
         return FAILED;
     }
 
@@ -197,7 +197,7 @@ uint sys_wmap(uint addr, int length, int flags, int fd)
 		/*
         // valid, do lazy alloc
         if (find_nu_addr(addr) != 0) {
-            printf("lazy alloc f\n");
+            // printf("lazy alloc f\n");
             return FAILED;
         }
         // TODO: update pg t
@@ -214,14 +214,14 @@ uint sys_wmap(uint addr, int length, int flags, int fd)
             while(check_valid(va)) {
                 va += PGSIZE;
                 if(va >= KERNBASE) {
-                    printf("va > kern\n");
+                    // printf("va > kern\n");
                     return FAILED;
                 }
             }            
         }
         // yay it worked now do lazy alloc
         if (find_nu_addr(addr) != 0) {
-            printf("lazy alloc f\n");
+            // printf("lazy alloc f\n");
             return FAILED;
         }
         // TODO: update pg t
@@ -229,7 +229,7 @@ uint sys_wmap(uint addr, int length, int flags, int fd)
         num_pages++;
         // check if surpass 16 pages
         if(num_pages > 16) {
-            printf("too many pages\n");
+            // printf("too many pages\n");
             return FAILED;
         } */
 		return -6;
@@ -313,7 +313,7 @@ int sys_wunmap(uint addr)
                 node->next->prev = node->prev;
             }
 
-            kfree(node);  // Free the memory occupied by the removed node
+            kfree((char*)node);  // Free the memory occupied by the removed node
             curproc->wmaps.total_mmaps--;
             break;
         }
