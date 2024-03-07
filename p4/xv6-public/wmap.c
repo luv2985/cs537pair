@@ -14,7 +14,6 @@
 #include "memlayout.h"
 #include "wmap.h"
 
-
 #define USERBOUNDARY 0x60000000
 #define KERNBASE 0x80000000
 
@@ -41,20 +40,98 @@ int find_nu_addr(uint va)
     return 0;
 }
 
+// count num pages allocated by a map
+int count_allocated_pages(struct proc *curproc, uint addr, int length) {
+    int count = 0;
+    uint va = addr;
+
+    while (length > 0) {
+        pte_t *pte = walkpgdir(curproc->pgdir, (void *)va, 0);
+        if (pte != 0 && (*pte & PTE_P) != 0) {
+            count++;
+        }
+        va += PGSIZE;
+        length -= PGSIZE;
+    }
+
+    return count;
+}
+
+
 
 /*********** INFO FUNCTIONS ***********/
 
 /*
- *
+ * 
  */
 int sys_getwmapinfo(struct wmapinfo *wminfo)
 {
-	
+	struct proc *curproc = myproc();
+    
+    // i guess we need it?
+    if (argptr(0, (char *)&wminfo, sizeof(struct wmapinfo)) < 0) {
+        printf("get wmap info arg 0\n");
+        return FAILED;
+    }
 
+    wminfo->total_mmaps = 0;
+
+    struct wmapnode *node = curproc->wmaps.head;
+    int i = 0;
+
+    // iterate
+    while (node && i < MAX_WMMAP_INFO) {
+        wminfo->addr[i] = node->addr;
+        wminfo->length[i] = node->length;
+        wminfo->n_loaded_pages[i] = node->n_loaded_pages;
+
+        node = node->next;
+        i++;
+    }
+
+    wminfo->total_mmaps = i;
 
     return 0;
 }
 
+/* 
+ *
+ */
+int getpgdirinfo(struct pgdirinfo *pdinfo) {
+        struct proc *curproc = myproc();
+
+    if (argptr(0, (char *)&pdinfo, sizeof(struct pgdirinfo)) < 0) {
+        printf("get pgdir info arg 0\n");
+        return FAILED;
+    }
+
+    pdinfo->n_upages = 0;
+
+    // or should we also do a linked list?
+    for (int i = 0; i < MAX_UPAGE_INFO; i++) {
+        pdinfo->va[i] = 0;
+        pdinfo->pa[i] = 0;
+    }
+
+    pde_t *pgdir = curproc->pgdir;
+    uint va = 0;
+    int i = 0;
+
+    while (i < MAX_UPAGE_INFO) {
+        pte_t *pte = walkpgdir(pgdir, (void *)va, 0);
+
+        if (pte != 0 && (*pte & PTE_P) != 0 && (*pte & PTE_U) != 0) {
+            pdinfo->va[i] = va;
+            pdinfo->pa[i] = PTE_ADDR(*pte);
+            pdinfo->n_upages++;
+            i++;
+        }
+
+        va += PGSIZE;
+    }
+
+    return 0;
+}
 
 
 
@@ -84,7 +161,7 @@ int sys_getwmapinfo(struct wmapinfo *wminfo)
 */
 uint sys_wmap(uint addr, int length, int flags, int fd)
 {
-    
+    struct proc *curproc = myproc();
 	/* CHECK FLAGS */
 
 	// check length
@@ -182,8 +259,24 @@ uint sys_wmap(uint addr, int length, int flags, int fd)
 		nva += PGSIZE;
 		leftover = leftover - PGSIZE;
 	}
-
 	// TODO: update process size: myproc()->sz += length or something
+    // update wmapinfo linked list
+    struct wmapnode *new_node = (struct wmapnode *)kalloc();
+    // do we really need to check if new_node exists?
+    if (new_node != 0) {
+        new_node->addr = va;
+        new_node->length = length;
+        new_node->n_loaded_pages = count_allocated_pages(curproc, addr, length);
+        // shove it in
+        new_node->next = curproc->wmaps.head;
+        new_node->prev = 0;
+        if (curproc->wmaps.head != 0) {
+            curproc->wmaps.head->prev = new_node;  // Update prev pointer of the current head
+        }
+        curproc->wmaps.head = new_node;
+        curproc->wmaps.total_mmaps++;
+    }
+
 
     return va;
 }
@@ -192,6 +285,7 @@ uint sys_wmap(uint addr, int length, int flags, int fd)
 // Implementation of munmap system call
 int sys_wunmap(uint addr)
 {
+    struct proc *curproc = myproc();
 	/* CATCH ERROR */
 	if (addr % PGSIZE != 0)
 	{
@@ -204,6 +298,28 @@ int sys_wunmap(uint addr)
 	pte_t* entry = walkpgdir(currproc->pgdir, (void*)&addr, 0);
 	uint physical_address = PTE_ADDR(*entry);
 	kfree(P2V(physical_address));
+
+    // adjust linked list
+    struct wmapnode *node = curproc->wmaps.head;
+    while (node) {
+        if (node->addr == addr) {
+            if (node->prev) {
+                node->prev->next = node->next;
+            } else {
+                curproc->wmaps.head = node->next;
+            }
+
+            if (node->next) {
+                node->next->prev = node->prev;
+            }
+
+            kfree(node);  // Free the memory occupied by the removed node
+            curproc->wmaps.total_mmaps--;
+            break;
+        }
+
+        node = node->next;
+    }
 
 
 	return SUCCESS;
