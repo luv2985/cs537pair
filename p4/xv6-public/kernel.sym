@@ -4,7 +4,7 @@
 8010ef58 panicked
 80100400 consputc.part.0
 80100600 printint
-801073d0 digits.0
+80107430 digits.0
 00000000 exec.c
 00000000 file.c
 00000000 fs.c
@@ -22,9 +22,9 @@
 00000000 kalloc.c
 00000000 kbd.c
 8011167c shift.1
-80107700 shiftcode
-80107600 togglecode
-801075e0 charcode.0
+80107760 shiftcode
+80107660 togglecode
+80107640 charcode.0
 80108200 normalmap
 80108100 shiftmap
 80108000 ctlmap
@@ -43,12 +43,12 @@
 801037b0 allocproc
 8010a000 first.1
 80113c54 initproc
-801079ac states.0
+80107a0c states.0
 00000000 sleeplock.c
 00000000 spinlock.c
 00000000 string.c
 00000000 syscall.c
-80107a20 syscalls
+80107a80 syscalls
 00000000 sysfile.c
 80104ad0 create
 00000000 sysproc.c
@@ -182,7 +182,7 @@
 80105dc2 vector19
 80106053 vector92
 80106707 vector244
-801072a0 sys_wmap
+801072b0 sys_wmap
 80101a60 stati
 80106227 vector140
 801056c0 sys_kill
@@ -300,6 +300,7 @@
 80102d60 begin_op
 801062b7 vector152
 80106f50 kvmalloc
+801072a0 sys_getwmapinfo
 8010665f vector230
 80104770 strncmp
 80105e64 vector37
@@ -415,6 +416,7 @@
 8010621b vector139
 801062c3 vector153
 80106347 vector164
+80107360 sys_wunmap
 801041e0 procdump
 80106158 vector121
 80105cb0 uartputc

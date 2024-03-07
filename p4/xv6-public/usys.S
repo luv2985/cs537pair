@@ -29,4 +29,6 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
-SYSCALL(wmap) // Vincent's edit: added wmap to bridge user 2 kernel
+SYSCALL(wmap) // edited: added wmap to bridge user 2 kernel
+SYSCALL(wunmap) //edited
+SYSCALL(getwmapinfo) // edited

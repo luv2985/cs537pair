@@ -14,11 +14,15 @@
 #include "memlayout.h"
 #include "wmap.h"
 
+
 #define USERBOUNDARY 0x60000000
 #define KERNBASE 0x80000000
 
+/********** HELPER METHODS ***********/
+
 // checks if the addr in pg t is valid; 0 if yes, -1 if no
-int check_valid(uint addr) {
+int check_valid(uint addr)
+{
     pte_t *pte = walkpgdir(myproc()->pgdir, (void *)addr, 0);
 
     if (pte != 0 && (*pte & PTE_P) != 0) {
@@ -30,11 +34,31 @@ int check_valid(uint addr) {
     }
 }
 
-int find_nu_addr(uint va) {
+int find_nu_addr(uint va)
+{
     char* mem = kalloc();
     mappages(myproc()->pgdir, (void*) va, PGSIZE, V2P(mem), PTE_W | PTE_U);
     return 0;
 }
+
+
+/*********** INFO FUNCTIONS ***********/
+
+/*
+ *
+ */
+int sys_getwmapinfo(struct wmapinfo *wminfo)
+{
+	
+
+
+    return 0;
+}
+
+
+
+
+/*********** MAIN FUNCTIONS ***********/
 
 
 /*
@@ -58,20 +82,21 @@ int find_nu_addr(uint va) {
  *  return
  *  
 */
-uint sys_wmap(uint addr, int length, int flags, int fd) {
+uint sys_wmap(uint addr, int length, int flags, int fd)
+{
     
 	/* CHECK FLAGS */
 
 	// check length
 	if(length <= 0) {
-        //printf("u dumb\n");
-        return FAILED;
+        return -5;
+		//return FAILED;
     }
 
 	// check flags
     if ((flags & MAP_SHARED) && (flags & MAP_PRIVATE)) {
-        //printf("flags collide\n");
-        return FAILED;
+        return -2;
+		//return FAILED;
     }
 
     // get process
@@ -81,13 +106,13 @@ uint sys_wmap(uint addr, int length, int flags, int fd) {
 	// MAP_FIXED flag
     if (flags & MAP_FIXED) {
         if (addr < USERBOUNDARY || addr >= KERNBASE || addr % PGSIZE != 0) {
-            //printf("addr f\n");
-            return FAILED;
+            return -3;
+			//return FAILED;
         }
         // Check if the specified address range is available x60000000
         if(check_valid(addr)<0) {
-            //printf("fixed addr f\n");
-            return FAILED;
+            return -4;
+			//return FAILED;
         }
 
 		va = addr;
@@ -130,7 +155,7 @@ uint sys_wmap(uint addr, int length, int flags, int fd) {
             printf("too many pages\n");
             return FAILED;
         } */
-		return FAILED;
+		return -6;
 	}
     
 
@@ -149,6 +174,7 @@ uint sys_wmap(uint addr, int length, int flags, int fd) {
 	uint nva = va;	
 	int leftover = length;
 	while (leftover > 0) {
+		//growproc(PGSIZE); // do we need to grow the process size? or is this handelled elsewhere?
 		// allocate new pages
 		find_nu_addr(va);
 
@@ -159,17 +185,36 @@ uint sys_wmap(uint addr, int length, int flags, int fd) {
 
 	// TODO: update process size: myproc()->sz += length or something
 
-    return SUCCESS;
+    return va;
 }
+
+
+// Implementation of munmap system call
+int sys_wunmap(uint addr)
+{
+	/* CATCH ERROR */
+	if (addr % PGSIZE != 0)
+	{
+		return FAILED;
+	}
+
+	struct proc* currproc = myproc();
+
+	/* FREE */
+	pte_t* entry = walkpgdir(currproc->pgdir, (void*)&addr, 0);
+	uint physical_address = PTE_ADDR(*entry);
+	kfree(P2V(physical_address));
+
+
+	return SUCCESS;
+}
+
+
 
 /*
-// Implementation of munmap system call
-int wunmap(void *addr, size_t length) {
-    // Your implementation here
-}
-
 // Implementation of mremap system call
-void *wremap(void *old_address, size_t old_size, size_t new_size, int flags) {
+void *wremap(void *old_address, size_t old_size, size_t new_size, int flags)
+{
     // Your implementation here
 }
 
