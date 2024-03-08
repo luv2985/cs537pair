@@ -64,9 +64,10 @@ int count_allocated_pages(struct proc *curproc, uint addr, int length) {
 /*
  * 
  */
-int getwmapinfo(struct wmapinfo *wminfo)
+int getwmapinfo(void)
 {
 	struct proc *curproc = myproc();
+	struct wmapinfo *wminfo;
     
     // i guess we need it?
     if (argptr(0, (char **)&wminfo, sizeof(struct wmapinfo)) < 0) {
@@ -97,8 +98,9 @@ int getwmapinfo(struct wmapinfo *wminfo)
 /* 
  *
  */
-int getpgdirinfo(struct pgdirinfo *pdinfo) {
-        struct proc *curproc = myproc();
+int getpgdirinfo(void) {
+    struct proc *curproc = myproc();
+	struct pgdirinfo *pdinfo;
 
     if (argptr(0, (char **)&pdinfo, sizeof(struct pgdirinfo)) < 0) {
         // printf("get pgdir info arg 0\n");
@@ -159,14 +161,28 @@ int getpgdirinfo(struct pgdirinfo *pdinfo) {
  *  return
  *  
 */
-uint wmap(uint addr, int length, int flags, int fd)
+//uint wmap(uint addr, int length, int flags, int fd)
+uint wmap(void)
 {
     struct proc *curproc = myproc();
-	/* CHECK FLAGS */
 
+	/* INPUTS */
+	int addr, length, flags, fd;
+
+    // Fetch integer arguments using argint
+    if (argint(0, &addr) < 0 ||    // First argument
+        argint(1, &length) < 0 ||  // Second argument
+        argint(2, &flags) < 0 ||   // Third argument
+        argint(3, &fd) < 0)        // Fourth argument
+    {
+        return -1; // Error handling: Return an error code
+    }
+
+	/* CHECK FLAGS */
+	
 	// check length
-	if(length <= 0) {
-        return -5;
+	if((uint)length <= 0) {
+        return PGSIZE;
 		//return FAILED;
     }
 
@@ -183,7 +199,7 @@ uint wmap(uint addr, int length, int flags, int fd)
 	// MAP_FIXED flag
     if (flags & MAP_FIXED) {
         if (addr < USERBOUNDARY || addr >= KERNBASE || addr % PGSIZE != 0) {
-            return -3;
+            return -5;
 			//return FAILED;
         }
         // Check if the specified address range is available x60000000
@@ -217,7 +233,6 @@ uint wmap(uint addr, int length, int flags, int fd)
             // printf("lazy alloc f\n");
             return FAILED;
         }
-        // TODO: update pg t
 
         num_pages++;
         // check if surpass 16 pages
@@ -328,11 +343,12 @@ int wunmap(uint addr)
 
 
 
-/*
+
 // Implementation of mremap system call
-void *wremap(void *old_address, size_t old_size, size_t new_size, int flags)
+uint wremap(uint oldaddr, int oldsize, int newsize, int flags)
 {
     // Your implementation here
+	return 0;
 }
 
-*/
+

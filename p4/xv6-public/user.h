@@ -1,6 +1,7 @@
 struct stat;
 struct rtcdate;
 struct wmapinfo;
+struct pgdirinfo;
 
 // system calls
 int fork(void);
@@ -27,6 +28,8 @@ int uptime(void);
 uint wmap(uint, int, int, int); // edited
 int wunmap(uint); // edited
 int getwmapinfo(struct wmapinfo*); // edited
+int getpgdirinfo(struct pgdirinfo*); // edited
+uint wremap(uint, int, int, int); // edited
 
 // ulib.c
 int stat(const char*, struct stat*);

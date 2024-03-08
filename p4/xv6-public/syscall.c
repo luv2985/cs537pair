@@ -106,6 +106,8 @@ extern int sys_uptime(void);
 extern int wmap(void); // edited: define system call handler which is an external function to be called
 extern int wunmap(void); // edited
 extern int getwmapinfo(void); // edited
+extern int getpgdirinfo(void); // edited
+extern int wremap(void); // edited
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -132,6 +134,8 @@ static int (*syscalls[])(void) = {
 [SYS_wmap]	  wmap, // edited: define function pointer
 [SYS_wunmap]		wunmap, // edited
 [SYS_getwmapinfo]	getwmapinfo, // edited
+[SYS_getpgdirinfo]	getpgdirinfo, // edited
+[SYS_wremap]	wremap, // edited
 };
 
 void
