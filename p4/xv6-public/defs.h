@@ -150,6 +150,7 @@ char*           strncpy(char*, const char*, int);
 
 // syscall.c
 int             argint(int, int*);
+int				arguint(int, uint*); // Edited: including a uint type of fetch
 int             argptr(int, char**, int);
 int             argstr(int, char**);
 int             fetchint(uint, int*);

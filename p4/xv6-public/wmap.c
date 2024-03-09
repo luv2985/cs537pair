@@ -24,7 +24,7 @@ int check_valid(uint addr)
 {
     pte_t *pte = walkpgdir(myproc()->pgdir, (void *)addr, 0);
 
-    if (pte != 0 && (*pte & PTE_P) != 0) {
+    if (pte == 0) {
         // The page is present and valid
         return SUCCESS;
     } else {
@@ -167,16 +167,19 @@ uint wmap(void)
     struct proc *curproc = myproc();
 
 	/* INPUTS */
-	int addr, length, flags, fd;
+	uint addr;
+	int length, flags, fd;
 
     // Fetch integer arguments using argint
-    if (argint(0, &addr) < 0 ||    // First argument
+    if (arguint(0, &addr) < 0 ||    // First argument
         argint(1, &length) < 0 ||  // Second argument
         argint(2, &flags) < 0 ||   // Third argument
         argint(3, &fd) < 0)        // Fourth argument
     {
         return -1; // Error handling: Return an error code
     }
+
+	return addr;
 
 	/* CHECK FLAGS */
 	
@@ -258,6 +261,7 @@ uint wmap(void)
             // Copy mappings from parent to child, use different physical pages
     }
     
+
 	/* LAZY ALLOCATION */
 	uint nu_va = va;
 	for (int leftover = length; leftover > 0; leftover -= PGSIZE) {
@@ -268,9 +272,10 @@ uint wmap(void)
 		// advance iter
 		nu_va += PGSIZE;
 	}
-	// TODO: update process size: myproc()->sz += length or something
-    // update wmapinfo linked list
-    struct wmapnode *new_node = (struct wmapnode *)kalloc();
+
+
+    /* UPDATE MAP TRACKER */
+	struct wmapnode *new_node = (struct wmapnode *)kalloc();
     // do we really need to check if new_node exists?
     if (new_node != 0) {
         new_node->addr = va;
