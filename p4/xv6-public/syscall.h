@@ -23,4 +23,5 @@
 #define SYS_wmap	22 // edited
 #define SYS_wunmap	23 // edited
 #define SYS_getwmapinfo	24 // edited
-
+#define SYS_getpgdirinfo	25 //edited
+#define SYS_wremap	26 //edited

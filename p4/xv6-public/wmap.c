@@ -64,9 +64,10 @@ int count_allocated_pages(struct proc *curproc, uint addr, int length) {
 /*
  * 
  */
-int sys_getwmapinfo(struct wmapinfo *wminfo)
+int getwmapinfo(void)
 {
 	struct proc *curproc = myproc();
+	struct wmapinfo *wminfo;
     
     // i guess we need it?
     if (argptr(0, (char **)&wminfo, sizeof(struct wmapinfo)) < 0) {
@@ -97,8 +98,9 @@ int sys_getwmapinfo(struct wmapinfo *wminfo)
 /* 
  *
  */
-int getpgdirinfo(struct pgdirinfo *pdinfo) {
-        struct proc *curproc = myproc();
+int getpgdirinfo(void) {
+    struct proc *curproc = myproc();
+	struct pgdirinfo *pdinfo;
 
     if (argptr(0, (char **)&pdinfo, sizeof(struct pgdirinfo)) < 0) {
         // printf("get pgdir info arg 0\n");
@@ -159,14 +161,28 @@ int getpgdirinfo(struct pgdirinfo *pdinfo) {
  *  return
  *  
 */
-uint sys_wmap(uint addr, int length, int flags, int fd)
+//uint wmap(uint addr, int length, int flags, int fd)
+uint wmap(void)
 {
     struct proc *curproc = myproc();
-	/* CHECK FLAGS */
 
+	/* INPUTS */
+	int addr, length, flags, fd;
+
+    // Fetch integer arguments using argint
+    if (argint(0, &addr) < 0 ||    // First argument
+        argint(1, &length) < 0 ||  // Second argument
+        argint(2, &flags) < 0 ||   // Third argument
+        argint(3, &fd) < 0)        // Fourth argument
+    {
+        return -1; // Error handling: Return an error code
+    }
+
+	/* CHECK FLAGS */
+	
 	// check length
-	if(length <= 0) {
-        return -5;
+	if((uint)length <= 0) {
+        return PGSIZE;
 		//return FAILED;
     }
 
@@ -183,7 +199,7 @@ uint sys_wmap(uint addr, int length, int flags, int fd)
 	// MAP_FIXED flag
     if (flags & MAP_FIXED) {
         if (addr < USERBOUNDARY || addr >= KERNBASE || addr % PGSIZE != 0) {
-            return -3;
+            return -5;
 			//return FAILED;
         }
         // Check if the specified address range is available x60000000
@@ -194,16 +210,9 @@ uint sys_wmap(uint addr, int length, int flags, int fd)
 
 		va = addr;
 
-		/*
-        // valid, do lazy alloc
-        if (find_nu_addr(addr) != 0) {
-            // printf("lazy alloc f\n");
-            return FAILED;
-        }
-        // TODO: update pg t
-
-        return addr;*/
     } else {
+		//find suitable address
+		
 		/*
         int iter = length/PGSIZE;
         int num_pages = 0; // keep record of number of pages created cuz max is 16
@@ -224,7 +233,6 @@ uint sys_wmap(uint addr, int length, int flags, int fd)
             // printf("lazy alloc f\n");
             return FAILED;
         }
-        // TODO: update pg t
 
         num_pages++;
         // check if surpass 16 pages
@@ -237,8 +245,11 @@ uint sys_wmap(uint addr, int length, int flags, int fd)
     
 
 	if(flags & MAP_ANONYMOUS) {
-            // we don't do anything?
-    } else if (flags & MAP_SHARED) {
+        // load pages? if not anonymous
+		
+    }
+
+	if (flags & MAP_SHARED) {
             // TODO: Implement shared mapping logic
             // Copy mappings from parent to child
 
@@ -248,16 +259,14 @@ uint sys_wmap(uint addr, int length, int flags, int fd)
     }
     
 	/* LAZY ALLOCATION */
-	uint nva = va;	
-	int leftover = length;
-	while (leftover > 0) {
+	uint nu_va = va;
+	for (int leftover = length; leftover > 0; leftover -= PGSIZE) {
 		//growproc(PGSIZE); // do we need to grow the process size? or is this handelled elsewhere?
 		// allocate new pages
 		find_nu_addr(va);
 
 		// advance iter
-		nva += PGSIZE;
-		leftover = leftover - PGSIZE;
+		nu_va += PGSIZE;
 	}
 	// TODO: update process size: myproc()->sz += length or something
     // update wmapinfo linked list
@@ -283,7 +292,7 @@ uint sys_wmap(uint addr, int length, int flags, int fd)
 
 
 // Implementation of munmap system call
-int sys_wunmap(uint addr)
+int wunmap(uint addr)
 {
     struct proc *curproc = myproc();
 	/* CATCH ERROR */
@@ -294,12 +303,8 @@ int sys_wunmap(uint addr)
 
 	struct proc* currproc = myproc();
 
-	/* FREE */
-	pte_t* entry = walkpgdir(currproc->pgdir, (void*)&addr, 0);
-	uint physical_address = PTE_ADDR(*entry);
-	kfree(P2V(physical_address));
-
     // adjust linked list
+	int free_len = 0;
     struct wmapnode *node = curproc->wmaps.head;
     while (node) {
         if (node->addr == addr) {
@@ -312,6 +317,8 @@ int sys_wunmap(uint addr)
             if (node->next) {
                 node->next->prev = node->prev;
             }
+			
+			free_len = node->length;
 
             kfree((char*)node);  // Free the memory occupied by the removed node
             curproc->wmaps.total_mmaps--;
@@ -322,16 +329,26 @@ int sys_wunmap(uint addr)
     }
 
 
+	uint iter_addr = addr;
+	for (int i = free_len; i > 0; i -= PGSIZE) {
+		/* FREE */
+		pte_t* entry = walkpgdir(currproc->pgdir, (void*)&iter_addr, 0);
+		uint physical_address = PTE_ADDR(*entry);
+		kfree(P2V(physical_address));
+		iter_addr += PGSIZE;
+	}
+
 	return SUCCESS;
 }
 
 
 
-/*
+
 // Implementation of mremap system call
-void *wremap(void *old_address, size_t old_size, size_t new_size, int flags)
+uint wremap(uint oldaddr, int oldsize, int newsize, int flags)
 {
     // Your implementation here
+	return 0;
 }
 
-*/
+

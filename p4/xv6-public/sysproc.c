@@ -6,6 +6,8 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "wmap.h"
+
 
 int
 sys_fork(void)
@@ -89,3 +91,35 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+/*
+uint
+sys_wmap(void)
+{
+	return wmap();
+}
+
+int
+sys_wunmap(void)
+{
+	return wunmap();
+}
+
+uint
+sys_wremap(void)
+{
+	return wremap();
+}
+
+int
+sys_getpgdirinfo(void)
+{
+	return getpgdirinfo();
+}
+
+int
+sys_getwmapinfo(void)
+{
+	return getwmapinfo();
+}
+*/

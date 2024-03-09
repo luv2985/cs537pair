@@ -29,3 +29,8 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
+SYSCALL(wmap) // edited
+SYSCALL(wunmap) // edited
+SYSCALL(getwmapinfo) // edited
+SYSCALL(getpgdirinfo) // edited
+SYSCALL(wremap) // edited
