@@ -165,6 +165,7 @@ void            idtinit(void);
 extern uint     ticks;
 void            tvinit(void);
 extern struct spinlock tickslock;
+void            pgf(struct trapframe *tf)
 
 // uart.c
 void            uartinit(void);
