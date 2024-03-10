@@ -24,14 +24,16 @@ int check_valid(struct proc* curproc, uint addr, int length)
 {
 	struct wmapnode* thisnode = curproc->wmaps.head; 
 
-	while (thisnode) {
+	while (thisnode != 0) {
 		uint botaddr = thisnode->addr;
 		uint topaddr = botaddr + thisnode->length;
 		uint addrlen = addr+length;
 
-		//if ((addr >= botaddr && addr < topaddr) || (addrlen >= botaddr && addrlen < topaddr) || (botaddr >= addr && botaddr < addrlen) || (topaddr >= addr && topaddr < addrlen)) {
-	    if ((addr <= topaddr && addrlen >= botaddr) || (botaddr <= addrlen && topaddr >= addr)) {
-			return PGROUNDUP(topaddr);
+		if ((addr >= botaddr && addr <= topaddr) ||
+			(addrlen >= botaddr && addrlen <= topaddr) ||
+			(botaddr >= addr && botaddr <= addrlen) ||
+			(topaddr >= addr && topaddr <= addrlen)) {
+			return -1;
 		}
 		thisnode = thisnode->next;
 	}
@@ -226,16 +228,14 @@ uint wmap(void)
 		int found = 0;
         // loop thru pg t to get available space
 		int t_va = USERBOUNDARY;
-		while(t_va < KERNBASE) {
+		while(t_va + length < KERNBASE) {
             int valid = check_valid(curproc, va, length);
 			if (valid == 0) {
 				va = t_va;
 				found = 1;
 				break;
-			} else {
-                t_va = valid;
-				return -1;
 			}
+			t_va += PGSIZE;
 		}
 		if (!found)
 			return -7;
