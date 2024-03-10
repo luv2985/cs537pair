@@ -196,9 +196,7 @@ uint wmap(void)
 		//return FAILED;
     }
 
-    // get process
-    //struct proc *curproc = myproc();
-    uint va;
+    uint va = 0;
 
 	// MAP_FIXED flag
     if (flags & MAP_FIXED) {
@@ -215,9 +213,7 @@ uint wmap(void)
 		va = addr;
 
     } else {
-		//find suitable address
-		
-		/*
+		// init va
         int iter = length/PGSIZE;
         int num_pages = 0; // keep record of number of pages created cuz max is 16
         // loop thru pg t to get available space
@@ -233,7 +229,7 @@ uint wmap(void)
             }            
         }
         // yay it worked now do lazy alloc
-        if (find_nu_addr(addr) != 0) {
+        if (find_nu_addr(va) != 0) {
             // printf("lazy alloc f\n");
             return FAILED;
         }
@@ -243,36 +239,59 @@ uint wmap(void)
         if(num_pages > 16) {
             // printf("too many pages\n");
             return FAILED;
-        } */
-		return -1;
+        } 
 	}
     
 
-	if(flags & MAP_ANONYMOUS) {
+    // we dont do anything extra for this?
+    if(flags & MAP_ANONYMOUS) {
         // load pages? if not anonymous
 		
     }
+	
 
 	if (flags & MAP_SHARED) {
-            // TODO: Implement shared mapping logic
-            // Copy mappings from parent to child
+        // TODO: Implement shared mapping logic
+        // Copy mappings from parent to child
+        struct proc *parent = curproc->parent;
+        struct wmapnode *parent_node = parent->wmaps.head;
+        
+        // go thru all parent's nodes
+        while (parent_node) {
+            if (parent_node->addr >= addr && parent_node->addr < addr + length) {
+                // This part of the parent's mapping overlaps with the new mapping
+                uint nu_va = va + (parent_node->addr - addr);
+                
+                // TODO: Copy the mapping from the parent to the child
+                // You need to map the same physical pages to the new virtual address in the child process
+                if (find_nu_addr(nu_va) != 0) { 
+                    return -1;
+                }
 
+                pte_t *parent_pte = walkpgdir(parent->pgdir, (void *)parent_node->addr, 0);
+                uint parent_pa = PTE_ADDR(*parent_pte);
+                mappages(curproc->pgdir, (void *)nu_va, PGSIZE, parent_pa, PTE_W | PTE_U);
+            }
+
+            parent_node = parent_node->next;
+        }
     } else if (flags & MAP_PRIVATE) {
             // TODO: Implement private mapping logic
             // Copy mappings from parent to child, use different physical pages
     }
     
+    if(!(flags & MAP_SHARED)) {
+        /* LAZY ALLOCATION */
+        uint nu_va = va;
+        for (int leftover = length; leftover > 0; leftover -= PGSIZE) {
+            //growproc(PGSIZE); // do we need to grow the process size? or is this handelled elsewhere?
+            // allocate new pages
+            if (find_nu_addr(nu_va) == -1) { return -2;}
 
-	/* LAZY ALLOCATION */
-	uint nu_va = va;
-	for (int leftover = length; leftover > 0; leftover -= PGSIZE) {
-		//growproc(PGSIZE); // do we need to grow the process size? or is this handelled elsewhere?
-		// allocate new pages
-		if (find_nu_addr(nu_va) == -1) { return -2;}
-
-		// advance iter
-		nu_va += PGSIZE;
-	}
+            // advance iter
+            nu_va += PGSIZE;
+        }
+    }
 
 
     /* UPDATE MAP TRACKER */
