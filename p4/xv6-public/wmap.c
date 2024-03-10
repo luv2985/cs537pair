@@ -35,7 +35,9 @@ int check_valid(uint addr)
 
 int find_nu_addr(uint va)
 {
-    char* mem = kalloc();
+    uint mem = (uint) kalloc();
+	if (mem == 0) { return -1; }
+
     mappages(myproc()->pgdir, (void*) va, PGSIZE, V2P(mem), PTE_W | PTE_U);
     return 0;
 }
@@ -179,7 +181,6 @@ uint wmap(void)
         return -1; // Error handling: Return an error code
     }
 
-	return addr;
 
 	/* CHECK FLAGS */
 	
@@ -191,7 +192,7 @@ uint wmap(void)
 
 	// check flags
     if ((flags & MAP_SHARED) && (flags & MAP_PRIVATE)) {
-        return -2;
+        return -1;
 		//return FAILED;
     }
 
@@ -202,12 +203,12 @@ uint wmap(void)
 	// MAP_FIXED flag
     if (flags & MAP_FIXED) {
         if (addr < USERBOUNDARY || addr >= KERNBASE || addr % PGSIZE != 0) {
-            return -5;
+            return -1;
 			//return FAILED;
         }
         // Check if the specified address range is available x60000000
         if(check_valid(addr)<0) {
-            return -4;
+            return -1;
 			//return FAILED;
         }
 
@@ -243,7 +244,7 @@ uint wmap(void)
             // printf("too many pages\n");
             return FAILED;
         } */
-		return -6;
+		return -1;
 	}
     
 
@@ -267,7 +268,7 @@ uint wmap(void)
 	for (int leftover = length; leftover > 0; leftover -= PGSIZE) {
 		//growproc(PGSIZE); // do we need to grow the process size? or is this handelled elsewhere?
 		// allocate new pages
-		find_nu_addr(va);
+		if (find_nu_addr(nu_va) == -1) { return -2;}
 
 		// advance iter
 		nu_va += PGSIZE;
