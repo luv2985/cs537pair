@@ -214,7 +214,8 @@ uint wmap(void)
 
 		va = addr;
 
-    } else {
+    } 
+    // else {
 		//find suitable address
 		
 		/*
@@ -244,19 +245,36 @@ uint wmap(void)
             // printf("too many pages\n");
             return FAILED;
         } */
-		return -1;
-	}
+	//	return -1;
+	//}
     
 
-	if(flags & MAP_ANONYMOUS) {
+    // i don't think we do anything extra for this?
+    if(flags & MAP_ANONYMOUS) {
         // load pages? if not anonymous
 		
     }
+	
 
 	if (flags & MAP_SHARED) {
-            // TODO: Implement shared mapping logic
-            // Copy mappings from parent to child
+        // TODO: Implement shared mapping logic
+        // Copy mappings from parent to child
+        struct proc *parent = curproc->parent;
+        struct wmapnode *parent_node = parent->wmaps.head;
+        while (parent_node) {
+            if (parent_node->addr >= addr && parent_node->addr < addr + length) {
+                // This part of the parent's mapping overlaps with the new mapping
+                uint nu_va = va + (parent_node->addr - addr);
+                
+                // TODO: Copy the mapping from the parent to the child
+                // You need to map the same physical pages to the new virtual address in the child process
 
+                // For simplicity, let's assume that the physical addresses are the same
+                mappages(curproc->pgdir, (void *)nu_va, PGSIZE, V2P((void *)parent_node->addr), PTE_W | PTE_U);
+            }
+
+            parent_node = parent_node->next;
+        }
     } else if (flags & MAP_PRIVATE) {
             // TODO: Implement private mapping logic
             // Copy mappings from parent to child, use different physical pages

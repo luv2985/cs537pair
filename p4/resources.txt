@@ -1,0 +1,3 @@
+passing arg in xv6: 
+https://stackoverflow.com/questions/46870509/how-to-pass-a-value-into-system-call-xv6#:~:text=Xv6%20has%20its%20own%20functions,()%20to%20retrieve%20string%20arguments.&text=0-,In%20sysproc.,function%20as%20having%20void%20argument.
+
