@@ -20,20 +20,22 @@
 /********** HELPER METHODS ***********/
 
 // checks if the addr in pg t is valid; 0 if yes, failed ending address if no, -1 if empty
-int check_valid(struct proc* curproc, uint addr, int length)
+int check_valid(uint addr, int length)
 {
-	struct map_entry* list = curproc->wmaps; 
-
+	struct proc* curproc = myproc();
 	for (int i = 0; i < 16; i++) {
-		uint botaddr = list[i]->addr;
-		uint topaddr = botaddr + list[i]->length;
-		uint addrlen = addr+length;
+		struct map_en* item = &(curproc->wmaps[i]);
+		if (item->valid == 1) {
+			int botaddr = item->addr;
+			int topaddr = botaddr + item->length;
+			int addrlen = addr + length;
 
-		if ((addr >= botaddr && addr <= topaddr) ||
-			(addrlen >= botaddr && addrlen <= topaddr) ||
-			(botaddr >= addr && botaddr <= addrlen) ||
-			(topaddr >= addr && topaddr <= addrlen)) {
-			return -1;
+			if ((addr >= botaddr && addr < topaddr) ||
+				(addrlen >= botaddr && addrlen < topaddr) ||
+				(botaddr >= addr && botaddr < addrlen) ||
+				(topaddr >= addr && topaddr < addrlen)) {
+				return PGROUNDUP(topaddr);
+			}
 		}
 	}
 	return 0;
@@ -85,23 +87,18 @@ int getwmapinfo(void)
         return FAILED;
     }
 
-    wminfo->total_mmaps = 0;
+    wminfo->total_mmaps = curproc->total_maps;
 
-    struct wmapnode *node = curproc->wmaps.head;
-    int i = 0;
+	struct map_en* list = curproc->wmaps;
 
     // iterate
-    while (node && i < MAX_WMMAP_INFO) {
-        wminfo->addr[i] = node->addr;
-        wminfo->length[i] = node->length;
-        wminfo->n_loaded_pages[i] = node->n_loaded_pages;
-
-        node = node->next;
-        i++;
+    for (int i = 0; i < 16; i++) {
+		if (list[i].valid == 1) {
+			wminfo->addr[i] = list[i].addr;
+			wminfo->length[i] = list[i].length;
+			wminfo->n_loaded_pages[i] = list[i].lpgs;
+		}
     }
-
-    wminfo->total_mmaps = i;
-
     return 0;
 }
 
@@ -119,7 +116,6 @@ int getpgdirinfo(void) {
 
     pdinfo->n_upages = 0;
 
-    // or should we also do a linked list?
     for (int i = 0; i < MAX_UPAGE_INFO; i++) {
         pdinfo->va[i] = 0;
         pdinfo->pa[i] = 0;
@@ -214,7 +210,7 @@ uint wmap(void)
 			//return FAILED;
         }
         // Check if the specified address range is available x60000000
-        if(check_valid(curproc, addr, length) != 0) {
+        if(check_valid(addr, length) != 0) {
             return -1;
 			//return FAILED;
         }
@@ -222,7 +218,7 @@ uint wmap(void)
 		va = addr;
 
     } else {
-        if(curproc->wmaps.total_mmaps > 15) {
+        if(curproc->total_maps > 15) {
             return FAILED;
         }
 
@@ -230,13 +226,13 @@ uint wmap(void)
         // loop thru pg t to get available space
 		int t_va = USERBOUNDARY;
 		while(t_va + length < KERNBASE) {
-            int valid = check_valid(curproc, va, length);
+            int valid = check_valid(t_va, length);
 			if (valid == 0) {
 				va = t_va;
 				found = 1;
 				break;
 			}
-			t_va += PGSIZE;
+			t_va = valid;
 		}
 		if (!found)
 			return -7;
@@ -317,6 +313,8 @@ uint wmap(void)
             cme[i].valid = 1;
 			cme[i].addr = va;
 			cme[i].length = length;
+			cme[i].lpgs = 0;
+			curproc->total_maps++;
 			break;
         }
     }	
@@ -346,10 +344,10 @@ int wunmap(void)
     struct map_en* list = curproc->wmaps;
 
     for (int i = 0; i < 16; i++) {
-        if (list[i]->addr == addr) {
-			free_len = list[i]->length;
+        if (list[i].addr == addr) {
+			free_len = list[i].length;
 
-            list[i]->valid = 0  // Free the memory occupied by the removed node
+            list[i].valid = 0;  // Free the memory occupied by the removed node
             curproc->total_maps--;
             break;
         }
