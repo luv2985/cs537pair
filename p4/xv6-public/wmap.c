@@ -326,20 +326,25 @@ uint wmap(void)
 
 
 // Implementation of munmap system call
-int wunmap(uint addr)
+int wunmap(void)
 {
     struct proc *curproc = myproc();
+    uint addr;
+    if (arguint(0, &addr) < 0) {
+        return -1;
+    }
 	/* CATCH ERROR */
 	if (addr % PGSIZE != 0)
 	{
 		return FAILED;
 	}
 
-	struct proc* currproc = myproc();
-
     // adjust linked list
 	int free_len = 0;
+    free_len ++;
+    free_len --;
     struct wmapnode *node = curproc->wmaps.head;
+
     while (node) {
         if (node->addr == addr) {
             if (node->prev) {
@@ -362,15 +367,25 @@ int wunmap(uint addr)
         node = node->next;
     }
 
+    // Go into pg t, if page is present and valid, remove
+    pte_t *pte = walkpgdir(myproc()->pgdir, (void *)addr, 0);
+    if (pte != 0 && (*pte & PTE_P)) {
+        uint a = PTE_ADDR(*pte);
+        kfree((char *)P2V(a));
+        *pte = 0;
+    } 
 
+    /* 
+    // i dont think we need to iter thru
 	uint iter_addr = addr;
 	for (int i = free_len; i > 0; i -= PGSIZE) {
-		/* FREE */
+		// FREE
 		pte_t* entry = walkpgdir(currproc->pgdir, (void*)&iter_addr, 0);
 		uint physical_address = PTE_ADDR(*entry);
 		kfree(P2V(physical_address));
 		iter_addr += PGSIZE;
 	}
+    */
 
 	return SUCCESS;
 }
