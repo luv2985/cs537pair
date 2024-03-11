@@ -22,11 +22,11 @@
 // checks if the addr in pg t is valid; 0 if yes, failed ending address if no, -1 if empty
 int check_valid(struct proc* curproc, uint addr, int length)
 {
-	struct wmapnode* thisnode = curproc->wmaps.head; 
+	struct map_entry* list = curproc->wmaps; 
 
-	while (thisnode != 0) {
-		uint botaddr = thisnode->addr;
-		uint topaddr = botaddr + thisnode->length;
+	for (int i = 0; i < 16; i++) {
+		uint botaddr = list[i]->addr;
+		uint topaddr = botaddr + list[i]->length;
 		uint addrlen = addr+length;
 
 		if ((addr >= botaddr && addr <= topaddr) ||
@@ -35,11 +35,12 @@ int check_valid(struct proc* curproc, uint addr, int length)
 			(topaddr >= addr && topaddr <= addrlen)) {
 			return -1;
 		}
-		thisnode = thisnode->next;
 	}
 	return 0;
 }
 
+
+/*
 int find_nu_addr(uint va)
 {
     uint mem = (uint) kalloc();
@@ -47,7 +48,7 @@ int find_nu_addr(uint va)
 
     mappages(myproc()->pgdir, (void*) va, PGSIZE, V2P(mem), PTE_W | PTE_U);
     return 0;
-}
+}*/
 
 // count num pages allocated by a map
 int count_allocated_pages(struct proc *curproc, uint addr, int length) {
@@ -303,23 +304,22 @@ uint wmap(void)
             nu_va += PGSIZE;
         }*/
 
-    /* UPDATE MAP TRACKER */
-	struct wmapnode *new_node = (struct wmapnode *)kalloc();
-    // do we really need to check if new_node exists?
-    if (new_node != 0) {
-        new_node->addr = va;
-        new_node->length = length;
-        new_node->n_loaded_pages = count_allocated_pages(curproc, addr, length);
-        // shove it in
-        new_node->next = curproc->wmaps.head;
-        new_node->prev = 0;
-        if (curproc->wmaps.head != 0) {
-            curproc->wmaps.head->prev = new_node;  // Update prev pointer of the current head
-        }
-        curproc->wmaps.head = new_node;
-        curproc->wmaps.total_mmaps++;
-    }
 
+
+    /* UPDATE MAP TRACKER */
+	struct map_en* cme = curproc->wmaps;	
+
+	for (int i = 0; i < 16; i++)
+    {
+        if (cme[i].valid == 0)
+        {
+            // place it here
+            cme[i].valid = 1;
+			cme[i].addr = va;
+			cme[i].length = length;
+			break;
+        }
+    }	
 
     return va;
 }
@@ -343,28 +343,16 @@ int wunmap(void)
 	int free_len = 0;
     free_len ++;
     free_len --;
-    struct wmapnode *node = curproc->wmaps.head;
+    struct map_en* list = curproc->wmaps;
 
-    while (node) {
-        if (node->addr == addr) {
-            if (node->prev) {
-                node->prev->next = node->next;
-            } else {
-                curproc->wmaps.head = node->next;
-            }
+    for (int i = 0; i < 16; i++) {
+        if (list[i]->addr == addr) {
+			free_len = list[i]->length;
 
-            if (node->next) {
-                node->next->prev = node->prev;
-            }
-			
-			free_len = node->length;
-
-            kfree((char*)node);  // Free the memory occupied by the removed node
-            curproc->wmaps.total_mmaps--;
+            list[i]->valid = 0  // Free the memory occupied by the removed node
+            curproc->total_maps--;
             break;
         }
-
-        node = node->next;
     }
 
     // Go into pg t, if page is present and valid, remove
@@ -389,8 +377,6 @@ int wunmap(void)
 
 	return SUCCESS;
 }
-
-
 
 
 // Implementation of mremap system call
