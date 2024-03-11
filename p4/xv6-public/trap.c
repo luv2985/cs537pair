@@ -79,7 +79,21 @@ trap(struct trapframe *tf)
     break;
   // if page fault
   case T_PGFLT:
-    page_fault_handler(tf);
+    uint va = rcr2();
+    struct proc *curproc = myproc();
+
+    if (!(tf->cs & 0x3)) {
+      cprintf("kernel fault va %p ip %p\n", va, tf->eip);
+      panic("kernel fault");
+    }
+
+    // Handle user-mode page fault
+    if (allocuvm(curproc->pgdir, PGROUNDDOWN(va), va + PGSIZE) == 0) {
+      // Allocation failed; kill the process
+      cprintf("page allocation failed, killing process\n");
+      curproc->killed = 1;
+      return;
+    }
     break;
 
   //PAGEBREAK: 13
@@ -113,28 +127,4 @@ trap(struct trapframe *tf)
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
     exit();
-}
-
-void
-pgf(struct trapframe *tf) 
-{
-  uint va = rcr2();
-  struct proc *curproc = myproc();
-
-  if (!(tf->cs & 0x3)) {
-    cprintf("kernel fault va %p ip %p\n", va, tf->eip);
-    panic("kernel fault");
-  }
-
-  // Handle user-mode page fault
-  if (allocuvm(curproc->pgdir, PGROUNDDOWN(va), va + PGSIZE) == 0) {
-    // Allocation failed; kill the process
-    cprintf("page allocation failed, killing process\n");
-    curproc->killed = 1;
-    return;
-  }
-
-  // Page allocation succeeded; resume execution
-  return;
-
 }
