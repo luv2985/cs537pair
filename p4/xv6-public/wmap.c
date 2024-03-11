@@ -19,18 +19,25 @@
 
 /********** HELPER METHODS ***********/
 
-// checks if the addr in pg t is valid; 0 if yes, -1 if no
-int check_valid(uint addr)
+// checks if the addr in pg t is valid; 0 if yes, failed ending address if no, -1 if empty
+int check_valid(struct proc* curproc, uint addr, int length)
 {
-    pte_t *pte = walkpgdir(myproc()->pgdir, (void *)addr, 0);
+	struct wmapnode* thisnode = curproc->wmaps.head; 
 
-    if (pte == 0) {
-        // The page is present and valid
-        return SUCCESS;
-    } else {
-        // The page is not present or not valid
-        return FAILED;
-    }
+	while (thisnode != 0) {
+		uint botaddr = thisnode->addr;
+		uint topaddr = botaddr + thisnode->length;
+		uint addrlen = addr+length;
+
+		if ((addr >= botaddr && addr <= topaddr) ||
+			(addrlen >= botaddr && addrlen <= topaddr) ||
+			(botaddr >= addr && botaddr <= addrlen) ||
+			(topaddr >= addr && topaddr <= addrlen)) {
+			return -1;
+		}
+		thisnode = thisnode->next;
+	}
+	return 0;
 }
 
 int find_nu_addr(uint va)
@@ -167,6 +174,7 @@ int getpgdirinfo(void) {
 uint wmap(void)
 {
     struct proc *curproc = myproc();
+	struct file *f = 0;
 
 	/* INPUTS */
 	uint addr;
@@ -185,14 +193,14 @@ uint wmap(void)
 	/* CHECK FLAGS */
 	
 	// check length
-	if((uint)length <= 0) {
+	if ((uint)length <= 0) {
         return PGSIZE;
 		//return FAILED;
     }
 
 	// check flags
     if ((flags & MAP_SHARED) && (flags & MAP_PRIVATE)) {
-        return -1;
+        return -2;
 		//return FAILED;
     }
 
@@ -201,11 +209,11 @@ uint wmap(void)
 	// MAP_FIXED flag
     if (flags & MAP_FIXED) {
         if (addr < USERBOUNDARY || addr >= KERNBASE || addr % PGSIZE != 0) {
-            return -1;
+            return -3;
 			//return FAILED;
         }
         // Check if the specified address range is available x60000000
-        if(check_valid(addr)<0) {
+        if(check_valid(curproc, addr, length) != 0) {
             return -1;
 			//return FAILED;
         }
@@ -213,43 +221,44 @@ uint wmap(void)
 		va = addr;
 
     } else {
-		// init va
-        int iter = length/PGSIZE;
-        int num_pages = 0; // keep record of number of pages created cuz max is 16
-        // loop thru pg t to get available space
-        for(int i=0; i<iter; i++) {
-            va = USERBOUNDARY + i * PGSIZE;
-            // if success, return 0, so loop stops; otherwise keep looping
-            while(check_valid(va)) {
-                va += PGSIZE;
-                if(va >= KERNBASE) {
-                    // printf("va > kern\n");
-                    return FAILED;
-                }
-            }            
-        }
-        // yay it worked now do lazy alloc
-        if (find_nu_addr(va) != 0) {
-            // printf("lazy alloc f\n");
+        if(curproc->wmaps.total_mmaps > 15) {
             return FAILED;
         }
 
-        num_pages++;
-        // check if surpass 16 pages
-        if(num_pages > 16) {
-            // printf("too many pages\n");
-            return FAILED;
-        } 
+		int found = 0;
+        // loop thru pg t to get available space
+		int t_va = USERBOUNDARY;
+		while(t_va + length < KERNBASE) {
+            int valid = check_valid(curproc, va, length);
+			if (valid == 0) {
+				va = t_va;
+				found = 1;
+				break;
+			}
+			t_va += PGSIZE;
+		}
+		if (!found)
+			return -7;
 	}
     
 
     // we dont do anything extra for this?
     if(flags & MAP_ANONYMOUS) {
-        // load pages? if not anonymous
-		
-    }
-	
+        // do nothing
+    } else {
+		if (fd <= 0)
+		{
+			return -5;
+		}
 
+		f = filedup(curproc->ofile[fd]);
+		if (f == 0)
+		{
+			return -6;
+		}
+	}
+	
+/*
 	if (flags & MAP_SHARED) {
         // TODO: Implement shared mapping logic
         // Copy mappings from parent to child
@@ -265,7 +274,7 @@ uint wmap(void)
                 // TODO: Copy the mapping from the parent to the child
                 // You need to map the same physical pages to the new virtual address in the child process
                 if (find_nu_addr(nu_va) != 0) { 
-                    return -1;
+                    return -7;
                 }
 
                 pte_t *parent_pte = walkpgdir(parent->pgdir, (void *)parent_node->addr, 0);
@@ -281,18 +290,18 @@ uint wmap(void)
     }
     
     if(!(flags & MAP_SHARED)) {
-        /* LAZY ALLOCATION */
+        
+    }
+	LAZY ALLOCATION
         uint nu_va = va;
         for (int leftover = length; leftover > 0; leftover -= PGSIZE) {
             //growproc(PGSIZE); // do we need to grow the process size? or is this handelled elsewhere?
             // allocate new pages
-            if (find_nu_addr(nu_va) == -1) { return -2;}
+            if (find_nu_addr(nu_va) == -1) { return -8;}
 
             // advance iter
             nu_va += PGSIZE;
-        }
-    }
-
+        }*/
 
     /* UPDATE MAP TRACKER */
 	struct wmapnode *new_node = (struct wmapnode *)kalloc();
@@ -317,20 +326,25 @@ uint wmap(void)
 
 
 // Implementation of munmap system call
-int wunmap(uint addr)
+int wunmap(void)
 {
     struct proc *curproc = myproc();
+    uint addr;
+    if (arguint(0, &addr) < 0) {
+        return -1;
+    }
 	/* CATCH ERROR */
 	if (addr % PGSIZE != 0)
 	{
 		return FAILED;
 	}
 
-	struct proc* currproc = myproc();
-
     // adjust linked list
 	int free_len = 0;
+    free_len ++;
+    free_len --;
     struct wmapnode *node = curproc->wmaps.head;
+
     while (node) {
         if (node->addr == addr) {
             if (node->prev) {
@@ -353,15 +367,25 @@ int wunmap(uint addr)
         node = node->next;
     }
 
+    // Go into pg t, if page is present and valid, remove
+    pte_t *pte = walkpgdir(myproc()->pgdir, (void *)addr, 0);
+    if (pte != 0 && (*pte & PTE_P)) {
+        uint a = PTE_ADDR(*pte);
+        kfree((char *)P2V(a));
+        *pte = 0;
+    } 
 
+    /* 
+    // i dont think we need to iter thru
 	uint iter_addr = addr;
 	for (int i = free_len; i > 0; i -= PGSIZE) {
-		/* FREE */
+		// FREE
 		pte_t* entry = walkpgdir(currproc->pgdir, (void*)&iter_addr, 0);
 		uint physical_address = PTE_ADDR(*entry);
 		kfree(P2V(physical_address));
 		iter_addr += PGSIZE;
 	}
+    */
 
 	return SUCCESS;
 }
