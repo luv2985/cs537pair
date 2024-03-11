@@ -34,17 +34,11 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
-struct wmapnode {
-  int addr;
+struct map_en {
+  int valid;
+  uint addr;
   int length;
-  int n_loaded_pages;
-  struct wmapnode *next;
-  struct wmapnode *prev;
-};
-
-struct wmapnodeinfo {
-    int total_mmaps;
-    struct wmapnode *head;
+  int lpgs;
 };
 
 // Per-process state
@@ -63,7 +57,8 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
-  struct wmapnodeinfo wmaps;		// track each wmap
+  int total_maps;				// track number of maps
+  struct map_en wmaps[16];		// track each wmap
 };
 
 // Process memory is laid out contiguously, low addresses first:
