@@ -92,34 +92,79 @@ sys_uptime(void)
   return xticks;
 }
 
-/*
+// memory mapping syscalls
 uint
 sys_wmap(void)
 {
-	return wmap();
+	uint addr;
+    int length, flags, fd;
+    
+    // Fetch integer arguments using argint
+    if (arguint(0, &addr) < 0 ||    // First argument
+        argint(1, &length) < 0 ||  // Second argument
+        argint(2, &flags) < 0 ||   // Third argument
+        argint(3, &fd) < 0)        // Fourth argument
+    {
+        return -1; // Error handling: Return an error code
+    }
+	
+	return wmap(addr, length, flags, fd);
 }
 
 int
 sys_wunmap(void)
 {
-	return wunmap();
+	uint addr;
+    if (arguint(0, &addr) < 0) {
+        return -1;
+    }
+
+	return wunmap(addr);
 }
 
 uint
 sys_wremap(void)
 {
-	return wremap();
+	uint oldaddr;
+    int oldsize, newsize, flags;
+
+    // Fetch integer arguments using argint
+    if (arguint(0, &oldaddr) < 0 ||    // First argument
+        argint(1, &oldsize) < 0 ||  // Second argument
+        argint(2, &newsize) < 0 ||   // Third argument
+        argint(3, &flags) < 0)        // Fourth argument
+    {
+        return -1; // Error handling: Return an error code
+    }
+
+
+	return wremap(oldaddr, oldsize, newsize, flags);
 }
 
 int
 sys_getpgdirinfo(void)
 {
-	return getpgdirinfo();
+	struct pgdirinfo* pdinfo;
+
+    if (argptr(0, (char **)&pdinfo, sizeof(struct pgdirinfo)) < 0) {
+        // printf("get pgdir info arg 0\n");
+        return FAILED;
+    }
+
+	return getpgdirinfo(pdinfo);
 }
 
 int
 sys_getwmapinfo(void)
 {
-	return getwmapinfo();
+	struct wmapinfo* wminfo;
+    
+    // i guess we need it?
+    if (argptr(0, (char **)&wminfo, sizeof(struct wmapinfo)) < 0) {
+        // printf("get wmap info arg 0\n");
+        return -1;
+    }
+
+	return getwmapinfo(wminfo);
 }
-*/
+

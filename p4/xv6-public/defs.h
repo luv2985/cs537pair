@@ -9,6 +9,8 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct wmapinfo;
+struct pgdirinfo;
 
 // bio.c
 void            binit(void);
@@ -190,6 +192,11 @@ int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 
 // wmap.c
+uint			wmap(uint, int, int, int);
+int				wunmap(uint);
+uint			wremap(uint, int, int, int);
+int				getwmapinfo(struct wmapinfo*);
+int				getpgdirinfo(struct pgdirinfo*);
 int				pf_handler(struct proc*, uint);
 
 // number of elements in fixed-size array
