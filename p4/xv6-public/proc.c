@@ -196,10 +196,30 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+
+  // copy wmaps
+  for (i = 0; i < 16; i++) {  
+    if(np->wmaps[i].valid == 1) {
+      np->wmaps[i].valid = curproc->wmaps[i].valid;
+      np->wmaps[i].addr = curproc->wmaps[i].addr;
+      np->wmaps[i].length = curproc->wmaps[i].length;
+      np->wmaps[i].lpgs = curproc->wmaps[i].lpgs;
+    }
+  }
+  // copy PTE
+  for (uint va = 0; va < curproc->sz; va += PGSIZE) {
+    pte_t *pte = walkpgdir(np->pgdir, (void*)va, 0);
+    if (pte && (*pte & PTE_P)) {
+      continue;
+    }
+      uint pa = PTE_ADDR(*pte);
+      mappages(np->pgdir, (void*)va, PGSIZE, pa, PTE_FLAGS(*pte));
+  }
+
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-
+  
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
