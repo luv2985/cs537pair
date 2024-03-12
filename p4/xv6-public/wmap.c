@@ -137,17 +137,17 @@ int count_allocated_pages(struct proc *curproc, uint addr, int length) {
 /*
  * 
  */
-int getwmapinfo(void)
+int getwmapinfo(struct wmapinfo* wminfo)
 {
 	struct proc *curproc = myproc();
-	struct wmapinfo *wminfo;
+/*	struct wmapinfo *wminfo;
     
     // i guess we need it?
     if (argptr(0, (char **)&wminfo, sizeof(struct wmapinfo)) < 0) {
         // printf("get wmap info arg 0\n");
         return FAILED;
     }
-
+*/
     wminfo->total_mmaps = curproc->total_maps;
 
 	struct map_en* list = curproc->wmaps;
@@ -166,15 +166,15 @@ int getwmapinfo(void)
 /* 
  *
  */
-int getpgdirinfo(void) {
+int getpgdirinfo(struct pgdirinfo* pdinfo) {
     struct proc *curproc = myproc();
-	struct pgdirinfo *pdinfo;
+/*	struct pgdirinfo *pdinfo;
 
     if (argptr(0, (char **)&pdinfo, sizeof(struct pgdirinfo)) < 0) {
         // printf("get pgdir info arg 0\n");
         return FAILED;
     }
-
+*/
     pdinfo->n_upages = 0;
 
     for (int i = 0; i < MAX_UPAGE_INFO; i++) {
@@ -227,14 +227,13 @@ int getpgdirinfo(void) {
  *  return
  *  
 */
-//uint wmap(uint addr, int length, int flags, int fd)
-uint wmap(void)
+uint wmap(uint addr, int length, int flags, int fd)
 {
     struct proc *curproc = myproc();
 	struct file *f = 0;
 
 	/* INPUTS */
-	uint addr;
+/*	uint addr;
 	int length, flags, fd;
 
     // Fetch integer arguments using argint
@@ -245,7 +244,7 @@ uint wmap(void)
     {
         return -1; // Error handling: Return an error code
     }
-
+*/
 
 	/* CHECK FLAGS */
 	
@@ -314,53 +313,6 @@ uint wmap(void)
 			return -6;
 		}
 	}
-	
-/*
-	if (flags & MAP_SHARED) {
-        // TODO: Implement shared mapping logic
-        // Copy mappings from parent to child
-        struct proc *parent = curproc->parent;
-        struct wmapnode *parent_node = parent->wmaps.head;
-        
-        // go thru all parent's nodes
-        while (parent_node) {
-            if (parent_node->addr >= addr && parent_node->addr < addr + length) {
-                // This part of the parent's mapping overlaps with the new mapping
-                uint nu_va = va + (parent_node->addr - addr);
-                
-                // TODO: Copy the mapping from the parent to the child
-                // You need to map the same physical pages to the new virtual address in the child process
-                if (find_nu_addr(nu_va) != 0) { 
-                    return -7;
-                }
-
-                pte_t *parent_pte = walkpgdir(parent->pgdir, (void *)parent_node->addr, 0);
-                uint parent_pa = PTE_ADDR(*parent_pte);
-                mappages(curproc->pgdir, (void *)nu_va, PGSIZE, parent_pa, PTE_W | PTE_U);
-            }
-
-            parent_node = parent_node->next;
-        }
-    } else if (flags & MAP_PRIVATE) {
-            // TODO: Implement private mapping logic
-            // Copy mappings from parent to child, use different physical pages
-    }
-    
-    if(!(flags & MAP_SHARED)) {
-        
-    }
-	LAZY ALLOCATION
-        uint nu_va = va;
-        for (int leftover = length; leftover > 0; leftover -= PGSIZE) {
-            //growproc(PGSIZE); // do we need to grow the process size? or is this handelled elsewhere?
-            // allocate new pages
-            if (find_nu_addr(nu_va) == -1) { return -8;}
-
-            // advance iter
-            nu_va += PGSIZE;
-        }*/
-
-
 
     /* UPDATE MAP TRACKER */
 	struct map_en* cme = curproc->wmaps;	
@@ -386,13 +338,13 @@ uint wmap(void)
 
 
 // Implementation of munmap system call
-int wunmap(void)
+int wunmap(uint addr)
 {
     struct proc *curproc = myproc();
-    uint addr;
+/*    uint addr;
     if (arguint(0, &addr) < 0) {
         return -1;
-    }
+    }*/
 	addr = PGROUNDDOWN(addr);
 
 	/* CATCH ERROR */
@@ -439,17 +391,7 @@ int wunmap(void)
 			*pte = 0;
 		}
 	}
-    /* 
-    // i dont think we need to iter thru
-	uint iter_addr = addr;
-	for (int i = free_len; i > 0; i -= PGSIZE) {
-		// FREE
-		pte_t* entry = walkpgdir(currproc->pgdir, (void*)&iter_addr, 0);
-		uint physical_address = PTE_ADDR(*entry);
-		kfree(P2V(physical_address));
-		iter_addr += PGSIZE;
-	}
-    */
+    
 
 	return SUCCESS;
 }
