@@ -58,6 +58,7 @@ int alloc_nu_pte(struct proc* curproc, struct map_en* entry, uint va)
 			kfree(mem);
 			return -3;
 		}
+		memset(mem, 0, PGSIZE);
 	} else {
 		// file-backed mapping
         struct file* f = curproc->ofile[entry->fd];
@@ -92,9 +93,9 @@ int alloc_nu_map(struct proc* curproc, int start, int end, int index)
 int pf_handler(struct proc* curproc, uint va)
 {
 	// check PGallign
-	if (va % PGSIZE != 0) {
+	/*if (va % PGSIZE != 0) {
 		return -5;
-	}
+	}*/
 
 	// find length
 	for (int i = 0; i < 16; i++) {
@@ -104,7 +105,7 @@ int pf_handler(struct proc* curproc, uint va)
 		
 		if (va <= topaddr && va >= botaddr) {
 			//found
-			alloc_nu_pte(curproc, entry, va);
+			alloc_nu_pte(curproc, entry, PGROUNDDOWN(va));
 			return 0;
 		}
 	}
