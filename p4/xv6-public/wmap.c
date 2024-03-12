@@ -393,6 +393,8 @@ int wunmap(void)
     if (arguint(0, &addr) < 0) {
         return -1;
     }
+	addr = PGROUNDDOWN(addr);
+
 	/* CATCH ERROR */
 	if (addr % PGSIZE != 0)
 	{
@@ -401,28 +403,42 @@ int wunmap(void)
 
     // adjust linked list
 	int free_len = 0;
-    free_len ++;
-    free_len --;
     struct map_en* list = curproc->wmaps;
+	int flags = 0;
+	int found = 0;
+	int fd = 0;
 
     for (int i = 0; i < 16; i++) {
         if (list[i].addr == addr) {
 			free_len = list[i].length;
-
-            list[i].valid = 0;  // Free the memory occupied by the removed node
+			flags = list[i].flags;
+            fd = list[i].fd;
+			list[i].valid = 0;  // Free the memory occupied by the removed node
             curproc->total_maps--;
+			found = 1;
             break;
         }
     }
+	if (found == 0) {
+		return -1;
+	}
 
     // Go into pg t, if page is present and valid, remove
-    pte_t *pte = walkpgdir(myproc()->pgdir, (void *)addr, 0);
-    if (pte != 0 && (*pte & PTE_P)) {
-        uint a = PTE_ADDR(*pte);
-        kfree((char *)P2V(a));
-        *pte = 0;
-    } 
+	int anon = flags & MAP_ANONYMOUS;
+	int shared = flags & MAP_SHARED;
+	for (int i = addr; i < addr + free_len; i += PGSIZE) {
+		pte_t *pte = walkpgdir(myproc()->pgdir, (void *) i, 0);
+		if (pte != 0) {
+			uint a = PTE_ADDR(*pte);
+			if (!anon && shared) {
+				struct file* f = curproc->ofile[fd];
+				filewrite(f, P2V(a), PGSIZE);
+			}
 
+			kfree(P2V(a));		
+			*pte = 0;
+		}
+	}
     /* 
     // i dont think we need to iter thru
 	uint iter_addr = addr;
