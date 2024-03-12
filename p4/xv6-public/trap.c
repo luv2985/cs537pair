@@ -88,9 +88,10 @@ trap(struct trapframe *tf)
     }
 
     // Handle user-mode page fault
-    if (allocuvm(curproc->pgdir, PGROUNDDOWN(va), va + PGSIZE) == 0) {
+	int res = pf_handler(curproc, va);
+    if (res != 0) {
       // Allocation failed; kill the process
-      cprintf("page allocation failed, killing process\n");
+      cprintf("page allocation failed, killing process: error: %d\n", res);
       curproc->killed = 1;
       return;
     }

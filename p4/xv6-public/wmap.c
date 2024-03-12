@@ -42,15 +42,75 @@ int check_valid(uint addr, int length)
 }
 
 
-/*
-int find_nu_addr(uint va)
-{
-    uint mem = (uint) kalloc();
-	if (mem == 0) { return -1; }
+// handle page fault, 0 if correct, -1 if not found
 
-    mappages(myproc()->pgdir, (void*) va, PGSIZE, V2P(mem), PTE_W | PTE_U);
-    return 0;
+int alloc_nu_pte(struct proc* curproc, struct map_en* entry, uint va)
+{
+
+    char* mem = kalloc();
+	if (mem == 0) {
+		return -2;
+	}
+	if (entry->flags & MAP_ANONYMOUS)
+	{
+		// anonymous mapping
+		if (mappages(curproc->pgdir, (void*) va, PGSIZE, V2P(mem), PTE_W | PTE_U) != 0) {
+			kfree(mem);
+			return -3;
+		}
+	} else {
+		// file-backed mapping
+        struct file* f = curproc->ofile[entry->fd];
+        
+		ilock(f->ip);
+        readi(f->ip, mem, va - entry->addr, PGSIZE);
+        iunlock(f->ip);
+        
+		if (mappages(curproc->pgdir, (void *) va, PGSIZE, V2P(mem), PTE_W | PTE_U) != 0) {
+            kfree(mem);
+            return -4;
+        }
+	}
+
+	entry->lpgs++;
+	return 0;
+}
+
+/*
+int alloc_nu_map(struct proc* curproc, int start, int end, int index)
+{
+	for (int i = start; i < end; i += PGSIZE) {
+		if (alloc_nu_pte(curproc, i, index) == -1) {
+			return -1;
+		}
+	}
+	return 0;
 }*/
+
+
+
+int pf_handler(struct proc* curproc, uint va)
+{
+	// check PGallign
+	if (va % PGSIZE != 0) {
+		return -5;
+	}
+
+	// find length
+	for (int i = 0; i < 16; i++) {
+		struct map_en* entry = &(curproc->wmaps[i]);
+		int botaddr = entry->addr;
+		int topaddr = botaddr + entry->length;
+		
+		if (va <= topaddr && va >= botaddr) {
+			//found
+			alloc_nu_pte(curproc, entry, va);
+			return 0;
+		}
+	}
+	return -1;
+}
+
 
 // count num pages allocated by a map
 int count_allocated_pages(struct proc *curproc, uint addr, int length) {
@@ -144,7 +204,6 @@ int getpgdirinfo(void) {
 
 
 /*********** MAIN FUNCTIONS ***********/
-
 
 /*
  * EDIT: functionality of system call wmap goes here
@@ -314,6 +373,8 @@ uint wmap(void)
 			cme[i].addr = va;
 			cme[i].length = length;
 			cme[i].lpgs = 0;
+			cme[i].flags = flags;
+			cme[i].fd = fd;
 			curproc->total_maps++;
 			break;
         }

@@ -39,6 +39,8 @@ struct map_en {
   uint addr;
   int length;
   int lpgs;
+  int flags;
+  int fd;
 };
 
 // Per-process state

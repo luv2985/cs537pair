@@ -7,15 +7,15 @@
 #include "wmap.h"
 
 // ====================================================================
-// Test 8
-// Summary: Places a large number of anonymous maps at fixed and non-fixed addresses
+// Test 9
+// Summary: access anonymous map (checks for memory allocation)
 //
+// Checks for memory allocation
 // Does not unmap any mapping
-// Does not check for memory allocation
 // Does not check for lazy allocation
 // ====================================================================
 
-char *test_name = "TEST_8";
+char *test_name = "TEST_9";
 
 // TEST HELPER
 #define MMAPBASE 0x60000000
@@ -36,7 +36,6 @@ void failed() {
 
 void get_n_validate_wmap_info(struct wmapinfo *info, int expected_total_mmaps) {
     int ret = getwmapinfo(info);
-	printf(1, "map info: addr %d length %d addr + len %d total %d\n", info->addr[0], info->length[0], info->addr[0] + info->length[0], info->total_mmaps);
     if (ret < 0) {
         printf(1, "Cause: `getwmapinfo()` returned %d\n", ret);
         failed();
@@ -61,93 +60,86 @@ void map_exists(struct wmapinfo *info, uint addr, int length, int expected) {
     }
 }
 
-/**
- * @param
- * @return
+void map_allocated(struct wmapinfo *info, uint addr, int length, int n_loaded_pages) {
+    int found = 0;
+    for (int i = 0; i < info->total_mmaps; i++) {
+        if (info->addr[i] == addr && info->length[i] == length) {
+            found = 1;
+            if (info->n_loaded_pages[i] != n_loaded_pages) {
+                printf(1, "Cause: expected %d pages to be loaded, but found %d\n", n_loaded_pages, info->n_loaded_pages[i]);
+                failed();
+            }
+            break;
+        }
+    }
+    if (!found) {
+        printf(1, "Cause: expected 0x%x with length %d to exist in the list of maps\n", addr, length);
+        failed();
+    }
+}
 
-*/
+void va_exists(struct pgdirinfo *info, uint va, int expected) {
+    int found = 0;
+    for (int i = 0; i < info->n_upages; i++) {
+        if (info->va[i] == va) {
+            found = 1;
+            break;
+        }
+    }
+    if (found != expected) {
+        printf(1, "Cause: expected Virt.Addr. 0x%x to %s in the list of user pages\n", va, expected ? "exist" : "not exist");
+        failed();
+    }
+}
 
 int main() {
     printf(1, "\n\n%s\n", test_name);
-    printf(1, "Maximum #allocatable pages: %d\n", (KERNBASE - MMAPBASE) / PGSIZE); // 131072
 
     // validate initial state
     struct wmapinfo winfo1;
     get_n_validate_wmap_info(&winfo1, 0); // no maps exist
     printf(1, "Initially 0 maps. \tOkay.\n");
 
-    int N_MAPS = 10;
-    int N_SMALL_MAPS = 3;
-    int fd = -1;
-    int fixed = MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE;
-    int not_fixed = MAP_ANONYMOUS | MAP_PRIVATE;
-    uint *maps = malloc(N_MAPS * sizeof(uint));
-    uint *lengths = malloc(N_MAPS * sizeof(uint));
-
-    // test begins
-
-    //
-    // 1. Places Map 1 at fixed address with length "401 pages"
-    //
-    uint addr = 0x60021000;
-    uint length = PGSIZE * 400 + 8;
-    uint map = wmap(addr, length, fixed, fd);
+    // place map 1 (fixed and anonymous)
+    int fixed_anon = MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE;
+    uint addr = MMAPBASE + PGSIZE * 2;
+    int length = 2 * PGSIZE + 1;
+    uint map = wmap(addr, length, fixed_anon, 0);
     if (map != addr) {
-        printf(1, "Cause: `wmap()` returned %d\n", map);
+        printf(1, "Cause: expected 0x%x, but got 0x%x\n", addr, map);
         failed();
     }
-    maps[0] = map;
-    lengths[0] = length;
-    printf(1, "Map 1 is placed at 0x%x. \tOkay.\n", addr);
-
-    //
-    // 2. Place 6 maps at non-fixed addresses with lengths "1 page", "2001 page", "4001 pages", ...
-    //    And then, place 3 maps at fixed addresses with lengths "2 page" each
-    //
-    for (int i = 1; i < 2; i++) {
-        addr = -1;
-        length = PGSIZE * (i * 2000 + 1) + i * 8;
-        if (i >= N_MAPS - N_SMALL_MAPS) // the last mmaps are small
-            length = PGSIZE + i * 16;
-        map = wmap(addr, length, not_fixed, fd);
-		printf(1, "zombie returned %d\n", map);
-
-        if (map < 0) {
-            printf(1, "Cause: `wmap()` returned %d\n", map);
-            failed();
-        }
-        if (map < MMAPBASE || map + length > KERNBASE) {
-            printf(1, "Cause: expected 0x%x <= 0x%x < 0x%x <= 0x%x, but found 0x%x\n", MMAPBASE, map, map + length, KERNBASE);
-            failed();
-        }
-		struct wmapinfo data;
-		get_n_validate_wmap_info(&data, 2);
-
-        maps[i] = map;
-        lengths[i] = length;
-        printf(1, "Map %d is placed at 0x%x. \tOkay.\n", i + 1, map);
-    }
-
-    // check for overlap among maps
-    for (int i = 0; i < N_MAPS; i++) {
-        for (int j = 0; j < N_MAPS; j++) {
-            if (i == j)
-                continue;
-            if (maps[i] >= maps[j] && maps[i] < maps[j] + lengths[j]) {
-                printf(1, "Cause: Map %d overlaps with Map %d\n", i + 1, j + 1);
-                failed();
-            }
-        }
-    }
-    printf(1, "Map 1 ~ %d do not overlap with each other. \tOkay\n", N_MAPS); // NOTE
-
-    // validate final state
+    // validate map 1
     struct wmapinfo winfo2;
-    get_n_validate_wmap_info(&winfo2, N_MAPS); // N_MAPS maps exist
-    for (int i = 0; i < N_MAPS; i++) {
-        map_exists(&winfo2, maps[i], lengths[i], TRUE); // each map exists
+    get_n_validate_wmap_info(&winfo2, 1); // 1 map exists
+    map_exists(&winfo2, addr, length, TRUE);
+    printf(1, "Map 1 at 0x%x with length %d. \tOkay.\n", map, length);
+
+    // access all pages of map 1
+    char *arr = (char *)map;
+    char val = 'p';
+    for (int i = 0; i < length; i++) {
+        arr[i] = val;
     }
-    printf(1, "Validated wmapinfo. \tOkay.\n");
+    // validate all pages of map 1
+    for (int i = 0; i < length; i++) {
+        if (arr[i] != val) {
+            printf(1, "Cause: expected %c at 0x%x, but got %c\n", val, addr + i, arr[i]);
+            failed();
+        }
+    }
+    // validate map 1 after accessing all pages
+    struct wmapinfo winfo3;
+    get_n_validate_wmap_info(&winfo3, 1); // 1 map exists
+    int n_loaded_pages = (length + PGSIZE - 1) / PGSIZE;
+    map_allocated(&winfo3, addr, length, n_loaded_pages); // 3 pages loaded
+    struct pgdirinfo pinfo;
+    getpgdirinfo(&pinfo);
+    for (int i = 0; i < length; i += PGSIZE) {
+        va_exists(&pinfo, addr + i, TRUE); // each virtual address exists in pgdir
+    }
+    va_exists(&pinfo, addr + length, FALSE); // virtual address after the map does not exist
+    printf(1, "Accessed all pages of Map 1. \tOkay.\n");
 
     // test ends
     success();
