@@ -104,3 +104,15 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+void
+sys_macquire(void)
+{
+  // inputs
+}
+
+void
+sys_mrelease(void)
+{
+  // inputs
+}
