@@ -93,6 +93,9 @@ found:
   p->nclone = 0;
   p->sleepticks = -1;
   p->chan = 0;
+  
+  // init nice to 0
+  p->nice = 0;
 
   release(&ptable.lock);
 
@@ -403,9 +406,26 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+
+    // proc with the highest prio
+    struct proc *nice_p = 0;
+    int min_nice = -20;
+
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+      if(p->state != RUNNABLE) {
         continue;
+      }
+      
+      // compare and get highest prio
+      if(p->nice < min_nice) {
+        nice_p = p;
+        min_nice = p->nice;
+      }
+
+      // switch if needed
+      if(nice_p != 0) {
+        p = nice_p;
+      }
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it

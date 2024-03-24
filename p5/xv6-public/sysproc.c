@@ -116,3 +116,25 @@ sys_mrelease(void)
 {
   // inputs
 }
+
+int
+sys_nice(void)
+{
+  int inc;
+  if (argint(0, &inc) < 0) {
+    return -1;
+  }
+
+  struct proc *curproc = myproc();
+  int new_nice = curproc->nice + inc;
+
+  if (new_nice < -20) {
+    new_nice = -20;
+  } else if (new_nice > 19) {
+    new_nice = 19;
+  }
+
+  curproc->nice = new_nice;
+
+  return 0;
+}

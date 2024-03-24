@@ -29,6 +29,7 @@ int uptime(void);
 int clone(void (*)(void*), void*, void*);
 void macquire(mutex*); // edited
 void mrelease(mutex*); // edited
+int nice(int inc);     // edited
 
 // ulib.c
 int stat(const char*, struct stat*);
