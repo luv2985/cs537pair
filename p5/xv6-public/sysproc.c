@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "mutex.h"
 
 int
 sys_fork(void)
@@ -105,16 +106,27 @@ sys_uptime(void)
   return xticks;
 }
 
+// edited section:
 void
 sys_macquire(void)
 {
-  // inputs
+  mutex* m;
+  if (argptr(0, (char **)&m, sizeof(mutex)) < 0) {
+    return;
+  }
+
+  macquire(m);
 }
 
 void
 sys_mrelease(void)
 {
-  // inputs
+  mutex* m;
+  if (argptr(0, (char **)&m, sizeof(mutex)) < 0) {
+    return;
+  }
+
+  mrelease(m);
 }
 
 int

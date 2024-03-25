@@ -11,15 +11,6 @@
 #include "mutex.h"
 
 void
-minit(mutex *m)
-{
-  initlock(&m->lk, "mutex");
-  m->name = name;
-  m->locked = 0;
-  m->pid = 0; // pid is set to zero until acquired
-}
-
-void
 macquire(mutex *m)
 {
   acquire(&m->lk);

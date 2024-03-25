@@ -44,4 +44,4 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
-void minit(mutex* m);
+void minit(mutex* m); // edited

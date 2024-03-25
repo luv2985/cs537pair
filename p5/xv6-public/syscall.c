@@ -104,8 +104,9 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_clone(void);
-extern int sys_macquire(void); // edited
-extern int sys_mrelease(void); // edited
+extern int sys_macquire(void);	// edited
+extern int sys_mrelease(void);	// edited
+extern int sys_nice(void);		// edited
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,

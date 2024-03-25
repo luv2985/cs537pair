@@ -3,6 +3,16 @@
 #include "fcntl.h"
 #include "user.h"
 #include "x86.h"
+#include "mutex.h"
+
+void
+minit(mutex *m)
+{
+  initlock(&m->lk, "mutex");
+  m->name = name;
+  m->locked = 0;
+  m->pid = 0; // pid is set to zero until acquired
+}
 
 char*
 strcpy(char *s, const char *t)
