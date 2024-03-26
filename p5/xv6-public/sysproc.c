@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "mutex.h"
 
 int
 sys_fork(void)
@@ -103,4 +104,49 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+// edited section:
+void
+sys_macquire(void)
+{
+  mutex* m;
+  if (argptr(0, (char **)&m, sizeof(mutex)) < 0) {
+    return;
+  }
+
+  macquire(m);
+}
+
+void
+sys_mrelease(void)
+{
+  mutex* m;
+  if (argptr(0, (char **)&m, sizeof(mutex)) < 0) {
+    return;
+  }
+
+  mrelease(m);
+}
+
+int
+sys_nice(void)
+{
+  int inc;
+  if (argint(0, &inc) < 0) {
+    return -1;
+  }
+
+  struct proc *curproc = myproc();
+  int new_nice = curproc->nice + inc;
+
+  if (new_nice < -20) {
+    new_nice = -20;
+  } else if (new_nice > 19) {
+    new_nice = 19;
+  }
+
+  curproc->nice = new_nice;
+
+  return 0;
 }
