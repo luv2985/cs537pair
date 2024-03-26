@@ -13,6 +13,6 @@ typedef struct {
 } mutex;
 
 
-void m_init(mutex* m);
+//void m_init(mutex* m);
 
 #endif

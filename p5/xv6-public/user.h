@@ -2,6 +2,7 @@
 
 struct stat;
 struct rtcdate;
+
 //typedef mutex; // edited
 
 // system calls
@@ -44,4 +45,5 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
-void minit(mutex* m); // edited
+void minit(mutex*); // edited
+

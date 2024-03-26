@@ -8,7 +8,11 @@
 void
 minit(mutex *m)
 {
-	m_init(m);
+  m->lk.name = "mutex";
+  m->lk.locked = 0;
+  m->lk.cpu = 0;
+  m->locked = 0;
+  m->pid = 0; // pid is set to zero until acquired
 }
 
 char*

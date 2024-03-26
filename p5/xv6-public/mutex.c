@@ -10,14 +10,13 @@
 #include "spinlock.h"
 #include "mutex.h"
 
-void
+/*void
 m_init(mutex* m)
 {
   initlock(&m->lk, "mutex");
   m->locked = 0;
   m->pid = 0; // pid is set to zero until acquired
-}
-
+}*/
 
 void
 macquire(mutex *m)
