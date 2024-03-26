@@ -11,11 +11,20 @@
 #include "mutex.h"
 
 void
+m_init(mutex* m)
+{
+  initlock(&m->lk, "mutex");
+  m->locked = 0;
+  m->pid = 0; // pid is set to zero until acquired
+}
+
+
+void
 macquire(mutex *m)
 {
   acquire(&m->lk);
   while (m->locked) {
-    sleep(lk, &m->lk);
+    sleep(m, &m->lk);
   }
   m->locked = 1;
   m->pid = myproc()->pid;

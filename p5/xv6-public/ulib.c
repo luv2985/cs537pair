@@ -8,10 +8,7 @@
 void
 minit(mutex *m)
 {
-  initlock(&m->lk, "mutex");
-  m->name = name;
-  m->locked = 0;
-  m->pid = 0; // pid is set to zero until acquired
+	m_init(m);
 }
 
 char*

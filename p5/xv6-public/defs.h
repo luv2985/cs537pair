@@ -191,7 +191,7 @@ int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 
 // mutex.c
-void			macuire(mutex*);
+void			macquire(mutex*);
 void			mrelease(mutex*);
 int				nice(int);
 
