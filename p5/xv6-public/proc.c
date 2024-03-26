@@ -409,27 +409,28 @@ scheduler(void)
 
     // proc with the highest prio
     struct proc *nice_p = 0;
-    int min_nice = -20;
+    int highest_prio = 19;
 
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE) {
+      if(p->state != RUNNABLE) 
         continue;
-      }
       
-      // compare and get highest prio
-      if(p->nice < min_nice) {
+      // compare and get higher prio
+      if(p->nice <= highest_prio) {
         nice_p = p;
-        min_nice = p->nice;
+        highest_prio = p->nice;
       }
+    
+    }
 
-      // switch if needed
-      if(nice_p != 0) {
-        p = nice_p;
-      }
+    // switch if needed
+    if(nice_p != 0) {
+      p = nice_p;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    //if(p != 0) {
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -442,7 +443,6 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
 

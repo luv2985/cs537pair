@@ -1,14 +1,29 @@
-// Create a zombie process that
-// must be reparented at exit.
-
 #include "types.h"
-#include "stat.h"
 #include "user.h"
 
-int
-main(void)
-{
-  if(fork() > 0)
-    sleep(5);  // Let child exit before parent.
+
+void fn1(void* arg) {
+  nice(10);
+  for (int i = 0; i < 100000; i++) {
+    if (i % 1000 == 0) {
+      sleep(0);
+    }
+  }
+
   exit();
 }
+
+int main() {
+  char* stack1 = (char*)malloc(4096);
+  clone(fn1, stack1 + 4096, 0);
+
+  for (int i = 0; i < 100000; i++) {
+    if (i % 1000 == 0) {
+      sleep(0);
+    }
+  }
+
+  wait();
+  exit();
+}
+
