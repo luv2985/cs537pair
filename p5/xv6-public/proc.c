@@ -412,15 +412,41 @@ scheduler(void)
     int highest_prio = 19;
 
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE) 
+      if(p->state != RUNNABLE) {
         continue;
-      
-      // compare and get higher prio
+      }
+
+      int temp_prio = p->nice;
+
+      // there are waiting threads; check their nice, if higher than the current, elevate current nice
+      if (p->chan != 0) {
+        // get the lock to see if there are other waiting threads
+        struct spinlock *lock = (struct spinlock *)p->chan;
+        if (lock->locked && lock->name != 0) {
+          // Check all processes waiting for this lock
+          struct proc *lock_holder = 0;
+          for (struct proc *q = ptable.proc; q < &ptable.proc[NPROC]; q++) {
+            if (q->state != RUNNABLE || q->chan != lock)
+              continue;
+            // Compare niceness to find the highest priority process waiting for the lock
+            if (q->nice < temp_prio) {
+              temp_prio = q->nice;
+              lock_holder = q;
+            }
+          }
+          if (lock_holder != 0 && temp_prio < p->nice) {
+            p->nice = temp_prio;
+          }
+        }
+      }
+      // switch to higher prio; elevate current nice if needed
       if(p->nice <= highest_prio) {
         nice_p = p;
+        if (p->nice < temp_prio) {
+          p->nice = temp_prio;
+        }
         highest_prio = p->nice;
       }
-    
     }
 
     // switch if needed
