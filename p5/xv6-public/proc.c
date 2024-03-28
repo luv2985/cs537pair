@@ -417,6 +417,7 @@ scheduler(void)
       }
 
       int temp_prio = p->nice;
+      int orig_nice = p->nice;
 
       // there are waiting threads; check their nice, if higher than the current, elevate current nice
       if (p->chan != 0) {
@@ -447,6 +448,7 @@ scheduler(void)
         }
         highest_prio = p->nice;
       }
+      p->nice = orig_nice;
     }
 
     // switch if needed
